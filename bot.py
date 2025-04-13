@@ -1,11 +1,13 @@
 import os
 import asyncio
+import threading
+from aiohttp import web
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
-from aiohttp import web
 
-TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+TOKEN = os.getenv("BOT_TOKEN")
 
+# Бот
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "Приветик🌸🌸🌸, сможешь зайти зарегистрироваться в боте, после я увижу твой ник и сразу же кину подарочек, вот [@vodka_bot](https://t.me/vodka_ref_bot?start=6605634314) ⭐⭐⭐",
@@ -21,23 +23,23 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def run_bot():
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
-    await app.run_polling()
+    await app.initialize()
+    await app.start()
+    await app.updater.start_polling()
+    await app.updater.idle()
 
-async def run_web_server():
-    async def handle(_):
-        return web.Response(text="Бот работает")
+# HTTP-сервер
+async def handle(request):
+    return web.Response(text="Bot is running!")
 
+def run_web_server():
     app = web.Application()
-    app.router.add_get("/", handle)
+    app.add_routes([web.get("/", handle)])
     port = int(os.environ.get("PORT", 8080))
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, "0.0.0.0", port)
-    await site.start()
-
-async def main():
-    await asyncio.gather(run_bot(), run_web_server())
+    web.run_app(app, port=port)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    threading.Thread(target=run_web_server).start()
+    asyncio.run(run_bot())
+
 
